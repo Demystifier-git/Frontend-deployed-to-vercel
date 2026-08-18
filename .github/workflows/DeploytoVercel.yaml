@@ -1,0 +1,26 @@
+name: Deploy to Vercel
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'   # Only deploy when a SemVer tag is pushed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # No npm install or build step since it's pure static files
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: web/static
+          vercel-args: '--prod'
+
