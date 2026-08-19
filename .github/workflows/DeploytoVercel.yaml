@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*.*.*'
+
   workflow_dispatch:
     inputs:
       tag:
@@ -26,16 +27,50 @@ jobs:
           git fetch --tags
           git checkout ${{ github.event.inputs.tag }}
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Verify Vercel CLI
+        run: vercel --version
+
       - name: Remove stale Vercel configuration
         run: |
           rm -rf web/static/.vercel
+          rm -rf .vercel
+
+      - name: Pull Vercel project configuration
+        working-directory: web/static
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          vercel pull \
+            --yes \
+            --environment=production \
+            --token="$VERCEL_TOKEN"
+
+      - name: Build Vercel project
+        working-directory: web/static
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          vercel build \
+            --prod \
+            --token="$VERCEL_TOKEN"
 
       - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: web/static
-          vercel-args: '--prod'
+        working-directory: web/static
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          vercel deploy \
+            --prebuilt \
+            --prod \
+            --token="$VERCEL_TOKEN"
 
