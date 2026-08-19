@@ -3,7 +3,7 @@
 }
 
 body {
-    background: linear-gradient(180deg, #0c1415, #16363e);
+    background: red !important;
     color: cyan;
     height: 1000px;
 }
