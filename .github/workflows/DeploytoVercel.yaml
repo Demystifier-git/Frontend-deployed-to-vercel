@@ -8,9 +8,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to deploy (e.g. v1.0.0)'
+        description: 'Tag to deploy (e.g. v1.2.0)'
         required: true
-        default: 'v1.0.0'
+        default: 'v1.2.0'
 
 jobs:
   deploy:
@@ -40,20 +40,16 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@59.1.4
 
-      - name: Verify Vercel CLI
-        run: vercel --version
-
-      - name: Remove stale Vercel configuration
-        run: |
-          rm -rf web/static/.vercel
-          rm -rf .vercel
-
       - name: Verify Vercel authentication
         run: |
           vercel whoami --token="$VERCEL_TOKEN"
 
+      - name: Remove stale Vercel configuration
+        run: |
+          rm -rf .vercel
+          rm -rf web/static/.vercel
+
       - name: Link Vercel project
-        working-directory: web/static
         run: |
           vercel link \
             --yes \
@@ -61,29 +57,9 @@ jobs:
             --scope="$VERCEL_ORG_ID" \
             --token="$VERCEL_TOKEN"
 
-      - name: Pull Vercel project configuration
-        working-directory: web/static
-        run: |
-          vercel pull \
-            --yes \
-            --environment=production \
-            --token="$VERCEL_TOKEN" \
-            --scope="$VERCEL_ORG_ID"
-
-      - name: Build Vercel project
-        working-directory: web/static
-        run: |
-          vercel build \
-            --prod \
-            --token="$VERCEL_TOKEN" \
-            --scope="$VERCEL_ORG_ID"
-
-      - name: Deploy to Vercel
-        working-directory: web/static
+      - name: Deploy static website
         run: |
           vercel deploy \
-            --prebuilt \
             --prod \
             --token="$VERCEL_TOKEN" \
             --scope="$VERCEL_ORG_ID"
-
