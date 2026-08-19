@@ -3,7 +3,7 @@ name: Deploy to Vercel
 on:
   push:
     tags:
-      - 'v*.*.*'   # Still runs automatically when you push a SemVer tag
+      - 'v*.*.*'
   workflow_dispatch:
     inputs:
       tag:
@@ -33,3 +33,4 @@ jobs:
           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
           working-directory: web/static
           vercel-args: '--prod'
+
