@@ -17,6 +17,11 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
 
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -33,7 +38,7 @@ jobs:
           node-version: 20
 
       - name: Install Vercel CLI
-        run: npm install --global vercel@latest
+        run: npm install --global vercel@59.1.4
 
       - name: Verify Vercel CLI
         run: vercel --version
@@ -43,34 +48,42 @@ jobs:
           rm -rf web/static/.vercel
           rm -rf .vercel
 
+      - name: Verify Vercel authentication
+        run: |
+          vercel whoami --token="$VERCEL_TOKEN"
+
+      - name: Link Vercel project
+        working-directory: web/static
+        run: |
+          vercel link \
+            --yes \
+            --project="$VERCEL_PROJECT_ID" \
+            --scope="$VERCEL_ORG_ID" \
+            --token="$VERCEL_TOKEN"
+
       - name: Pull Vercel project configuration
         working-directory: web/static
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           vercel pull \
             --yes \
             --environment=production \
-            --token="$VERCEL_TOKEN"
+            --token="$VERCEL_TOKEN" \
+            --scope="$VERCEL_ORG_ID"
 
       - name: Build Vercel project
         working-directory: web/static
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           vercel build \
             --prod \
-            --token="$VERCEL_TOKEN"
+            --token="$VERCEL_TOKEN" \
+            --scope="$VERCEL_ORG_ID"
 
       - name: Deploy to Vercel
         working-directory: web/static
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           vercel deploy \
             --prebuilt \
             --prod \
-            --token="$VERCEL_TOKEN"
+            --token="$VERCEL_TOKEN" \
+            --scope="$VERCEL_ORG_ID"
 
