@@ -15,15 +15,20 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: production
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set ref to input tag
         if: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
           git fetch --tags
           git checkout ${{ github.event.inputs.tag }}
+
+      - name: Remove stale Vercel configuration
+        run: |
+          rm -rf web/static/.vercel
 
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25
