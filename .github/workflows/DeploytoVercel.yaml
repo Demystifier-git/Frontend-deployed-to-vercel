@@ -1,22 +1,17 @@
 name: Deploy to Vercel
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
-
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'Tag to deploy (e.g. v1.2.0)'
+      version:
+        description: 'Semantic version to deploy (e.g. v1.0.0)'
         required: true
-        default: 'v1.2.0'
+        default: 'v1.0.0'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: production
-
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -26,11 +21,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set ref to input tag
-        if: ${{ github.event_name == 'workflow_dispatch' }}
+      - name: Set version from workflow input
         run: |
-          git fetch --tags
-          git checkout ${{ github.event.inputs.tag }}
+          echo "Deploying version ${{ github.event.inputs.version }}"
+          git tag ${{ github.event.inputs.version }}
+          git checkout ${{ github.event.inputs.version }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -41,8 +36,7 @@ jobs:
         run: npm install --global vercel@59.1.4
 
       - name: Verify Vercel authentication
-        run: |
-          vercel whoami --token="$VERCEL_TOKEN"
+        run: vercel whoami --token="$VERCEL_TOKEN"
 
       - name: Remove stale Vercel configuration
         run: |
