@@ -84,6 +84,7 @@ jobs:
   rollback:
     if: ${{ github.event.inputs.action == 'rollback' }}
     runs-on: ubuntu-latest
+    environment: production
     env:
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
