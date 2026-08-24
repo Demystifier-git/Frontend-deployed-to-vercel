@@ -12,7 +12,7 @@ on:
         required: true
 
 permissions:
-  contents: write
+  contents: write   # allow GITHUB_TOKEN to push commits
 
 jobs:
   deploy:
@@ -73,7 +73,7 @@ jobs:
 
       - name: Alias custom domain to new deployment
         run: |
-          vercel alias set ${{ steps.extract.outputs.deployment_id }} delightdavid.online \
+          vercel alias set ${{ steps.deploy.outputs.deployment_url }} delightdavid.online \
             --token="$VERCEL_TOKEN" \
             --scope="$VERCEL_ORG_ID"
 
