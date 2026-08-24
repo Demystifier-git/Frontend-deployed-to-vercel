@@ -73,7 +73,7 @@ jobs:
 
       - name: Alias custom domain to new deployment
         run: |
-          vercel alias set ${{ steps.extract.outputs.deployment_id }} delightdaid.online \
+          vercel alias set ${{ steps.extract.outputs.deployment_id }} delightdavid.online \
             --token="$VERCEL_TOKEN" \
             --scope="$VERCEL_ORG_ID"
 
@@ -108,6 +108,6 @@ jobs:
 
       - name: Alias custom domain to rollback deployment
         run: |
-          vercel alias set ${{ steps.read.outputs.deployment_id }} delightdaid.online \
+          vercel alias set ${{ steps.read.outputs.deployment_id }} delightdavid.online \
             --token="$VERCEL_TOKEN" \
             --scope="$VERCEL_ORG_ID"
