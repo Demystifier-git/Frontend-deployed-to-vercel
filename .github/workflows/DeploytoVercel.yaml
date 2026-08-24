@@ -16,7 +16,7 @@ on:
         required: true
 
 permissions:
-  contents: write   # allow GITHUB_TOKEN to push commits
+  contents: write
 
 jobs:
   deploy:
@@ -54,20 +54,13 @@ jobs:
             --scope="$VERCEL_ORG_ID")
           echo "deployment_url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
 
-      - name: Extract Deployment ID
-        id: extract
-        run: |
-          DEPLOYMENT_URL=${{ steps.deploy.outputs.deployment_url }}
-          DEPLOYMENT_ID=$(echo $DEPLOYMENT_URL | sed 's/.*-//;s/.vercel.app//')
-          echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
-
       - name: Update version mapping
         run: |
           VERSION=${{ github.event.inputs.version }}
-          DEPLOYMENT_ID=${{ steps.extract.outputs.deployment_id }}
+          DEPLOYMENT_URL=${{ steps.deploy.outputs.deployment_url }}
 
           if [ ! -f version-map.json ]; then echo "{}" > version-map.json; fi
-          jq ".\"$VERSION\" = \"$DEPLOYMENT_ID\"" version-map.json > tmp.json && mv tmp.json version-map.json
+          jq ".\"$VERSION\" = \"$DEPLOYMENT_URL\"" version-map.json > tmp.json && mv tmp.json version-map.json
 
           git add version-map.json
           git commit -m "Update mapping for $VERSION"
@@ -101,18 +94,18 @@ jobs:
         id: read
         run: |
           VERSION=${{ github.event.inputs.version }}
-          DEPLOYMENT_ID=$(jq -r ".\"$VERSION\"" version-map.json)
-          if [ "$DEPLOYMENT_ID" == "null" ]; then
+          DEPLOYMENT_URL=$(jq -r ".\"$VERSION\"" version-map.json)
+          if [ "$DEPLOYMENT_URL" == "null" ]; then
             echo "Version $VERSION not found in version-map.json"
             exit 1
           fi
-          echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
+          echo "deployment_url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
 
       - name: Install Vercel CLI
         run: npm install --global vercel@59.1.4
 
       - name: Alias custom domain to rollback deployment
         run: |
-          vercel alias set ${{ steps.read.outputs.deployment_id }} delightdavid.online \
+          vercel alias set ${{ steps.read.outputs.deployment_url }} delightdavid.online \
             --token="$VERCEL_TOKEN" \
             --scope="$VERCEL_ORG_ID"
