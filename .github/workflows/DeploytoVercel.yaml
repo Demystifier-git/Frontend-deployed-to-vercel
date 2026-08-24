@@ -11,6 +11,9 @@ on:
         description: 'Semantic version (e.g. v1.0.0)'
         required: true
 
+permissions:
+  contents: write   # <-- This grants the GITHUB_TOKEN permission to push commits
+
 jobs:
   deploy:
     if: ${{ github.event.inputs.action == 'deploy' }}
@@ -24,6 +27,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -57,11 +65,11 @@ jobs:
           if [ ! -f version-map.json ]; then echo "{}" > version-map.json; fi
           jq ".\"$VERSION\" = \"$DEPLOYMENT_ID\"" version-map.json > tmp.json && mv tmp.json version-map.json
 
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
           git add version-map.json
           git commit -m "Update mapping for $VERSION"
           git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   rollback:
     if: ${{ github.event.inputs.action == 'rollback' }}
@@ -97,4 +105,5 @@ jobs:
           vercel alias set ${{ steps.read.outputs.deployment_id }} myapp.vercel.app \
             --token="$VERCEL_TOKEN" \
             --scope="$VERCEL_ORG_ID"
+
 
