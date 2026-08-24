@@ -1,15 +1,19 @@
-name: Deploy to Vercel
+name: Vercel Deploy & Rollback
 
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Semantic version to deploy (e.g. v1.0.0)'
+      action:
+        description: 'Choose action: deploy or rollback'
         required: true
-        default: 'v1.0.0'
+        default: 'deploy'
+      version:
+        description: 'Semantic version (e.g. v1.0.0)'
+        required: true
 
 jobs:
   deploy:
+    if: ${{ github.event.inputs.action == 'deploy' }}
     runs-on: ubuntu-latest
     environment: production
     env:
@@ -21,12 +25,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set version from workflow input
-        run: |
-          echo "Deploying version ${{ github.event.inputs.version }}"
-          git tag ${{ github.event.inputs.version }}
-          git checkout ${{ github.event.inputs.version }}
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -35,25 +33,68 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@59.1.4
 
-      - name: Verify Vercel authentication
-        run: vercel whoami --token="$VERCEL_TOKEN"
-
-      - name: Remove stale Vercel configuration
+      - name: Deploy to Vercel
+        id: deploy
         run: |
-          rm -rf .vercel
-          rm -rf web/static/.vercel
-
-      - name: Link Vercel project
-        run: |
-          vercel link \
-            --yes \
-            --project="$VERCEL_PROJECT_ID" \
-            --scope="$VERCEL_ORG_ID" \
-            --token="$VERCEL_TOKEN"
-
-      - name: Deploy static website
-        run: |
-          vercel deploy \
+          DEPLOYMENT_URL=$(vercel deploy \
             --prod \
             --token="$VERCEL_TOKEN" \
+            --scope="$VERCEL_ORG_ID")
+          echo "deployment_url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+
+      - name: Extract Deployment ID
+        id: extract
+        run: |
+          DEPLOYMENT_URL=${{ steps.deploy.outputs.deployment_url }}
+          DEPLOYMENT_ID=$(echo $DEPLOYMENT_URL | sed 's/.*-//;s/.vercel.app//')
+          echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
+
+      - name: Update version mapping
+        run: |
+          VERSION=${{ github.event.inputs.version }}
+          DEPLOYMENT_ID=${{ steps.extract.outputs.deployment_id }}
+
+          if [ ! -f version-map.json ]; then echo "{}" > version-map.json; fi
+          jq ".\"$VERSION\" = \"$DEPLOYMENT_ID\"" version-map.json > tmp.json && mv tmp.json version-map.json
+
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add version-map.json
+          git commit -m "Update mapping for $VERSION"
+          git push
+
+  rollback:
+    if: ${{ github.event.inputs.action == 'rollback' }}
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install jq
+        run: sudo apt-get install -y jq
+
+      - name: Read version mapping
+        id: read
+        run: |
+          VERSION=${{ github.event.inputs.version }}
+          DEPLOYMENT_ID=$(jq -r ".\"$VERSION\"" version-map.json)
+          if [ "$DEPLOYMENT_ID" == "null" ]; then
+            echo "Version $VERSION not found in version-map.json"
+            exit 1
+          fi
+          echo "deployment_id=$DEPLOYMENT_ID" >> $GITHUB_OUTPUT
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@59.1.4
+
+      - name: Roll back to deployment
+        run: |
+          vercel alias set ${{ steps.read.outputs.deployment_id }} myapp.vercel.app \
+            --token="$VERCEL_TOKEN" \
             --scope="$VERCEL_ORG_ID"
+
